@@ -1,0 +1,65 @@
+trainer:
+  accelerator: auto
+  devices: 1
+  max_epochs: 200
+  precision: bf16-mixed
+  logger:
+    - class_path: lightning.pytorch.loggers.CSVLogger
+      init_args:
+        save_dir: ./logs/csv
+        name: clf_icaloflow
+    - class_path: lightning.pytorch.loggers.WandbLogger
+      init_args:
+        save_dir: ./logs/wandb
+        project: toynce
+        group: nu100
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        monitor: mae
+        mode: min
+        save_top_k: 3
+        filename: "{epoch}-{mae:.4f}"
+        save_last: true
+        verbose: true
+    - class_path: lightning.pytorch.callbacks.EarlyStopping
+      init_args:
+        monitor: mae
+        mode: min
+        patience: 10
+        verbose: true
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: epoch
+
+model:
+  class_path: toy_gaussian.model.ToyNCE
+  init_args:
+    noise_dim: 45
+    noise_amplifier: 100
+    hidden_dim: 1024
+    num_layers: 5
+    dropout: 0.0
+    activation: gelu
+
+data:
+  class_path: toy_gaussian.data.ToyNCEDataModule
+  init_args:
+    q0_mean: "/sps/atlas/t/tpham/toynce/notebook/mean.pt"
+    q0_cov: "/sps/atlas/t/tpham/toynce/notebook/covariance_matrix.pt"
+    batch_size: 256
+    num_workers: 2
+    n_sample: 900000
+
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 0.0005
+
+lr_scheduler:
+  class_path: torch.optim.lr_scheduler.StepLR
+  init_args:
+    gamma: 0.9
+    step_size: 10
+
+
