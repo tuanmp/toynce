@@ -7,7 +7,7 @@ trainer:
     - class_path: lightning.pytorch.loggers.CSVLogger
       init_args:
         save_dir: ./logs/csv
-        name: clf_icaloflow
+        name: clf_icaloflow_nu500
     - class_path: lightning.pytorch.loggers.WandbLogger
       init_args:
         save_dir: ./logs/wandb

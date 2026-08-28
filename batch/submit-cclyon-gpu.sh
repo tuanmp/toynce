@@ -10,7 +10,7 @@
 #SBATCH --error=slurm_logs/cclyon-%j-%x.err
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --gpus=3
+#SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=5
 #SBATCH --mem=64G
 #SBATCH --time=08:00:00
