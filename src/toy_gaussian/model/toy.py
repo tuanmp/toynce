@@ -72,14 +72,17 @@ class ToyNCE(pl.LightningModule):
         ratio = self.noise_amplifier * (score / (1 - score + 1e-8))  # Avoid division by zero
         return ratio
 
+    def estimate_log_density_ratio(self, yhat):
+        return yhat + torch.log(torch.tensor(self.noise_amplifier, device=self.device, dtype=yhat.dtype))
+
     def on_validation_batch_end(self, outputs, batch, *args, **kwargs):
         self.log("val_loss", outputs["val_loss"])
         y = outputs["y"]
         y_hat = outputs["y_hat"][y==1]
-        estimated_ratio = self.estimate_density_ratio(y_hat.squeeze(-1))
-        true_ratio = (batch["log_prob"] - self.q0.log_prob(batch["x"]) ).to(estimated_ratio.dtype).exp()  # Avoid division by zero
+        estimated_log_ratio = self.estimate_log_density_ratio(y_hat.squeeze(-1))
+        true_log_ratio = (batch["log_prob"] - self.q0.log_prob(batch["x"]) ).to(estimated_log_ratio.dtype)
 
-        mae = ((estimated_ratio - true_ratio).abs() / true_ratio) .mean()
+        mae = ((estimated_log_ratio - true_log_ratio).abs()) .mean()
 
         self.log("mae", mae)
 

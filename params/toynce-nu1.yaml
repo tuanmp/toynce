@@ -48,7 +48,7 @@ data:
     q0_mean: "/sps/atlas/t/tpham/toynce/notebook/mean.pt"
     q0_cov: "/sps/atlas/t/tpham/toynce/notebook/covariance_matrix.pt"
     batch_size: 256
-    num_workers: 2
+    num_workers: 5
     n_sample: 900000
 
 optimizer:
