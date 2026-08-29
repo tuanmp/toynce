@@ -6,9 +6,10 @@ import lightning as pl
 import numpy as np
 import torch
 import torch.nn as nn
+import torchmetrics
 from lightning.pytorch.utilities.rank_zero import rank_zero_info
 from sklearn.metrics import brier_score_loss
-from torchmetrics import AUROC, CalibrationError, MetricCollection
+from torchmetrics import MeanAbsoluteError
 
 from toy_gaussian.model.mlp import MLP
 
@@ -28,6 +29,11 @@ class ToyNCE(pl.LightningModule):
 
         self.noise_dim = noise_dim
         self.noise_amplifier = noise_amplifier
+
+        self.metrics = torchmetrics.MetricCollection({
+            "mae": MeanAbsoluteError(),
+        })
+
         self.save_hyperparameters(ignore=["net"])
 
     @property
@@ -67,15 +73,22 @@ class ToyNCE(pl.LightningModule):
         y_hat = torch.sigmoid(logits)
         return {"val_loss": loss, "y_hat": y_hat, "y": y, "logits": logits}
 
+    def estimate_log_ratio(self, logits):
+        estimated_log_ratio = logits + torch.log(torch.tensor(self.noise_amplifier, device=self.device, dtype=logits.dtype))
+        return estimated_log_ratio
+
     def on_validation_batch_end(self, outputs, batch, *args, **kwargs):
         self.log("val_loss", outputs["val_loss"])
         y = outputs["y"]
         logits = outputs["logits"][y == 1].squeeze(-1)
-        estimated_log_ratio = logits + torch.log(torch.tensor(self.noise_amplifier, device=self.device, dtype=logits.dtype))
+        estimated_log_ratio = self.estimate_log_ratio(logits)
         true_log_ratio = (batch["log_prob"] - self.q0.log_prob(batch["x"])).to(estimated_log_ratio.dtype)
 
-        mae = ((estimated_log_ratio - true_log_ratio).abs()).mean()
+        self.metrics.update(estimated_log_ratio, true_log_ratio)
 
-        self.log("mae", mae)
+    def on_validation_epoch_end(self) -> None:
+        metrics = self.metrics.compute()
+        self.log_dict(metrics, on_epoch=True, prog_bar=True)
+        self.metrics.reset()
 
 
